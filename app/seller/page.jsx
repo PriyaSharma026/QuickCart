@@ -1,10 +1,14 @@
 'use client'
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { assets } from "@/assets/assets";
 import Image from "next/image";
+import { useAppContext } from "@/context/AppContext";
+import toast from "react-hot-toast";
+import axios from "axios";
 
 const AddProduct = () => {
 
+  const { getToken } = useAppContext()
   const [files, setFiles] = useState([]);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -12,9 +16,69 @@ const AddProduct = () => {
   const [price, setPrice] = useState('');
   const [offerPrice, setOfferPrice] = useState('');
 
+  useEffect(() => {
+    console.log("Updated State:", {
+      name,
+      description,
+      category,
+      price,
+      offerPrice,
+      files,
+    });
+  }, [name, description, category, price, offerPrice, files]);
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    const formData = new FormData()
+    formData.append('name',name)
+    formData.append('description', description)
+    formData.append('category',category)
+    formData.append('price',price)
+    formData.append('offerPrice',offerPrice)
 
+    for (let i = 0; i < files.length; i++) {
+      formData.append('images', files[i])      
+    }
+
+    try {
+      const token = await getToken()
+      if (!token) {
+        console.error("Token is missing!");
+        return;
+      }
+      console.log("FormData Entries:");
+      for (let [key, value] of formData.entries()) {
+        console.log(`${key}:`, value);
+      }
+
+      const { data } = await axios.post("/api/product/add", formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log(data, 'logging res')
+
+      if(data.success) {
+        toast.success(data.message)
+        setFiles([])
+        setName('');
+        setDescription('');
+        setCategory('');
+        setPrice('');
+        setOfferPrice('');
+      } else {
+        toast.error(data.message);
+        console.log(data.message, "inside else");
+      }
+
+    } catch (error) {
+      toast.error(error.message);
+      console.log(error.message, 'inside catch');
+    }
+
+    
   };
 
   return (
